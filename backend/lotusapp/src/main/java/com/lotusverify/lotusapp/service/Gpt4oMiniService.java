@@ -13,24 +13,51 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class Gpt4oMiniService {
     private final Dotenv dotenv = Dotenv.load();
-    private final String ENDPOINT = dotenv.get("OPENAI_ENDPOINT");
-    private final String API_KEY = dotenv.get("OPENAI_API_KEY");
+    private final String ENDPOINT1 = dotenv.get("OPENAI_ENDPOINT1");
+    private final String API_KEY1 = dotenv.get("OPENAI_API_KEY1");
+    private final String ENDPOINT2 = dotenv.get("OPENAI_ENDPOINT2");
+    private final String API_KEY2 = dotenv.get("OPENAI_API_KEY2");
+    private final String ENDPOINT3 = dotenv.get("OPENAI_ENDPOINT3");
+    private final String API_KEY3 = dotenv.get("OPENAI_API_KEY3");
+    private final String ENDPOINT4 = dotenv.get("OPENAI_ENDPOINT4");
+    private final String API_KEY4 = dotenv.get("OPENAI_API_KEY4");
+
+    private final AtomicInteger requestCounter = new AtomicInteger(0);
 
     public String getChatCompletion(String prompt) {
+        int requestIndex = requestCounter.getAndIncrement() % 4;
+        switch (requestIndex) {
+            case 0 -> {
+                return invokeModel(prompt, ENDPOINT1, API_KEY1);
+            }
+            case 1 -> {
+                return invokeModel(prompt, ENDPOINT2, API_KEY2);
+            }
+            case 2 -> {
+                return invokeModel(prompt, ENDPOINT3, API_KEY3);
+            }
+            case 3 -> {
+                return invokeModel(prompt, ENDPOINT4, API_KEY4);
+            }
+            default -> throw new IllegalStateException("Índice de modelo inesperado");
+        }
+    }
+
+    private String invokeModel(String prompt, String endpoint, String apiKey) {
         if (prompt == null || prompt.trim().isEmpty()) {
             return "Error: El contenido proporcionado está vacío.";
         }
 
-        var entity = getMapHttpEntity(prompt);
+        var entity = getMapHttpEntity(prompt, apiKey);
 
         try {
             var restTemplate = new RestTemplate();
-            assert ENDPOINT != null;
-            ResponseEntity<String> response = restTemplate.exchange(ENDPOINT, HttpMethod.POST, entity, String.class);
+            ResponseEntity<String> response = restTemplate.exchange(endpoint, HttpMethod.POST, entity, String.class);
 
             var objectMapper = new ObjectMapper();
             JsonNode root = objectMapper.readTree(response.getBody());
@@ -42,20 +69,22 @@ public class Gpt4oMiniService {
     }
 
     @NotNull
-    private HttpEntity<Map<String, Object>> getMapHttpEntity(String prompt) {
+    private HttpEntity<Map<String, Object>> getMapHttpEntity(String prompt, String apiKey) {
         var headers = new HttpHeaders();
         headers.set("Content-Type", "application/json");
-        headers.set("api-key", API_KEY);
+        headers.set("api-key", apiKey);
 
         Map<String, Object> requestBody = Map.of(
                 "messages", List.of(
-                        Map.of("role", "system", "content", "You are LotusVerify, an assistant specialized in factual validation."),
+                        Map.of("role", "system", "content", "I am LotusVerify, an assistant specialized in fact-checking. " +
+                                "My task is to verify the accuracy of the information you provide, returning a concise and clear response " +
+                                "of up to 50 words. I will not perform internet searches; I rely solely on prior knowledge for verification."),
                         Map.of("role", "user", "content", prompt)
                 ),
                 "max_tokens", 100,
                 "temperature", 0.5
         );
 
-        return new HttpEntity<Map<String, Object>>(requestBody, headers);
+        return new HttpEntity<>(requestBody, headers);
     }
 }
