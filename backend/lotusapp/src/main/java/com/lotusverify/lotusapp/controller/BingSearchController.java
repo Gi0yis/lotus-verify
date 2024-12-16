@@ -17,4 +17,11 @@ public class BingSearchController {
     public String search(@RequestParam String query) {
         return bingSearchService.search(query);
     }
+
+//    public ResponseEntity<Map<String, Object>> search(@RequestParam String query) {
+//        Map<String, Object> response = new HashMap<>();
+//        response.put("query", query);
+//        response.put("results", bingSearchService.search(query));
+//        return ResponseEntity.ok(response);
+//    }
 }

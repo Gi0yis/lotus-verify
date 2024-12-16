@@ -12,8 +12,8 @@ import java.util.Map;
 
 @Service
 public class WorldBankService {
-    private static final Dotenv dotenv = Dotenv.load();
-    private static final String BASE_URL = dotenv.get("WORLD_BANK_URL");
+    private final Dotenv dotenv = Dotenv.load();
+    private final String BASE_URL = dotenv.get("WORLD_BANK_URL");
 
     private final RestTemplate restTemplate;
 
