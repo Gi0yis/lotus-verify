@@ -1,6 +1,7 @@
 package com.lotusverify.lotusapp.controller;
 
 import com.lotusverify.lotusapp.model.DocumentRequest;
+import com.lotusverify.lotusapp.model.ValidationReport;
 import com.lotusverify.lotusapp.service.DocumentValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -14,23 +15,29 @@ public class DocumentValidationController {
     private DocumentValidationService documentValidationService;
 
     @PostMapping
-    public ResponseEntity<String> validateDocument(@RequestBody DocumentRequest request) {
+    public ResponseEntity<ValidationReport> validateDocument(@RequestBody DocumentRequest request) {
         if (request.getText() == null || request.getText().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("El texto no puede estar vacío.");
+            return ResponseEntity.badRequest().build();
         }
 
         try {
-            var validationReport = documentValidationService.validateDocument(request.getText());
+            ValidationReport validationReport = documentValidationService.validateDocument(request.getText());
             return ResponseEntity.ok(validationReport);
 
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(
-                    "Ocurrió un error durante la validación del documento: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
         return ResponseEntity.ok("El servicio de validación está operativo.");
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<String> getConfigDetails() {
+        return ResponseEntity.ok("Configuración básica del servicio de validación activa.");
     }
 }

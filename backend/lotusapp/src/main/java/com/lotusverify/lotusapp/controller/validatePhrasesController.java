@@ -1,6 +1,6 @@
 package com.lotusverify.lotusapp.controller;
 
-import com.lotusverify.lotusapp.service.Gpt4oMiniService;
+import com.lotusverify.lotusapp.service.ValidatePhrasesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -8,10 +8,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/gpt")
-public class Gpt4oMiniController {
+public class validatePhrasesController {
 
     @Autowired
-    private Gpt4oMiniService gptService;
+    private ValidatePhrasesService gptService;
 
     @PostMapping("/validate")
     public Map<String, Object> validateDocument(@RequestBody Map<String, String> request) {

@@ -1,91 +1,74 @@
 package com.lotusverify.lotusapp.service;
 
+import com.lotusverify.lotusapp.model.ValidationReport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class DocumentValidationService {
 
+    private static final int REQUEST_LIMIT = 6;
+    private static final long TIME_WINDOW = 60;
+
     @Autowired
-    private TextAnalyticsService textAnalyticsService;
+    private ExtractPhrasesService extractPhrasesService;
 
     @Autowired
     private BingSearchService bingSearchService;
 
     @Autowired
-    private Gpt4oMiniService gpt4oMiniService;
+    private ValidatePhrasesService validatePhrasesService;
 
     @Autowired
     private MetricsService metricsService;
 
-    public String validateDocument(String documentText) {
-        var report = new StringBuilder();
+    public ValidationReport validateDocument(String documentText) {
+        ValidationReport report = new ValidationReport();
+        long startTime = System.currentTimeMillis();
 
-        List<Map<String, String>> entities = textAnalyticsService.extractEntities(documentText);
-        report.append("=== Entidades Detectadas ===\n");
-        report.append("Total: ").append(entities.size()).append("\n\n");
+        List<String> phrases = extractPhrasesService.extractRelevantPhrases(documentText);
+        report.setTotalPhrases(phrases.size());
 
-        int processedRequests = 0;
-        int validCount = 0;
-
-        for (Map<String, String> entity : entities) {
-            if (processedRequests >= 10) {
-                try {
-                    Thread.sleep(60000);
-                    processedRequests = 0;
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Error al pausar solicitudes", e);
-                }
+        var processedRequests = 0;
+        for (String phrase : phrases) {
+            if (processedRequests >= REQUEST_LIMIT) {
+                waitForRateLimitReset();
+                processedRequests = 0;
             }
 
-            var entityText = entity.get("Entity");
-            report.append("Validando afirmación: ").append(entityText).append("\n");
+            String searchResults = bingSearchService.search(phrase);
+            metricsService.logSearch(!searchResults.contains("No se encontraron"), System.currentTimeMillis() - startTime);
 
-            long searchStartTime = System.currentTimeMillis();
-            var searchResults = bingSearchService.search(entityText);
-            long responseTime = System.currentTimeMillis() - searchStartTime;
+            String validationResponse = validatePhrase(phrase, searchResults);
+            var isPrecise = validationResponse.toLowerCase().contains("preciso") ||
+                    validationResponse.toLowerCase().contains("cierto");
 
-            var searchSuccess = !searchResults.contains("No se encontraron resultados");
-            metricsService.logSearch(searchSuccess, responseTime);
+            report.addPhraseResult(phrase, searchResults, validationResponse, isPrecise);
+            metricsService.logValidation(isPrecise);
 
-            if (searchSuccess) {
-                report.append("Resultados resumidos:\n").append(searchResults).append("\n");
-
-                var prompt = "Valida si esta información es precisa: " + entityText +
-                        "\nBasado en: " + searchResults;
-                var validationResponse = gpt4oMiniService.getChatCompletion(prompt);
-
-                boolean isPrecise = validationResponse.toLowerCase().contains("preciso") ||
-                        validationResponse.toLowerCase().contains("correcto") ||
-                        validationResponse.toLowerCase().contains("cierto");
-
-                if (isPrecise) {
-                    validCount++;
-                }
-
-                metricsService.logValidation(isPrecise);
-
-                report.append("Resultado de validación: ").append(validationResponse).append("\n\n");
-                processedRequests++;
-            } else {
-                report.append("No se encontraron resultados relevantes para la entidad.\n\n");
-            }
+            processedRequests++;
         }
 
-        report.append("\n=== Métricas del Proceso ===\n");
-        report.append("Total de búsquedas realizadas: ").append(metricsService.getTotalQueries()).append("\n");
-        report.append("Porcentaje de búsquedas exitosas: ")
-                .append(String.format("%.2f", metricsService.getSearchSuccessRate())).append("%\n");
-        report.append("Tiempo promedio de respuesta: ")
-                .append(String.format("%.2f", metricsService.getAverageResponseTime())).append(" ms\n");
-        report.append("Afirmaciones validadas: ").append(validCount).append("\n");
-        report.append("Porcentaje de precisión: ")
-                .append(String.format("%.2f", (double) validCount / entities.size() * 100)).append("%\n");
+        long totalExecutionTime = System.currentTimeMillis() - startTime;
+        report.setExecutionTime(totalExecutionTime);
+        return report;
+    }
 
-        return report.toString();
+    private void waitForRateLimitReset() {
+        try {
+            System.out.println("Esperando para evitar límites de tasa...");
+            TimeUnit.SECONDS.sleep(TIME_WINDOW);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private String validatePhrase(String phrase, String searchResults) {
+        var prompt = "Valida si esta información es precisa: " + phrase +
+                "\nBasado en: " + searchResults;
+        return validatePhrasesService.getChatCompletion(prompt);
     }
 }

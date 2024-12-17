@@ -16,16 +16,16 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
-public class Gpt4oMiniService {
+public class ValidatePhrasesService {
     private final Dotenv dotenv = Dotenv.load();
-    private final String ENDPOINT1 = dotenv.get("OPENAI_ENDPOINT1");
-    private final String API_KEY1 = dotenv.get("OPENAI_API_KEY1");
-    private final String ENDPOINT2 = dotenv.get("OPENAI_ENDPOINT2");
-    private final String API_KEY2 = dotenv.get("OPENAI_API_KEY2");
-    private final String ENDPOINT3 = dotenv.get("OPENAI_ENDPOINT3");
-    private final String API_KEY3 = dotenv.get("OPENAI_API_KEY3");
-    private final String ENDPOINT4 = dotenv.get("OPENAI_ENDPOINT4");
-    private final String API_KEY4 = dotenv.get("OPENAI_API_KEY4");
+    private final String ENDPOINT1 = dotenv.get("VALIDATE_MODEL_ENDPOINT1");
+    private final String API_KEY1 = dotenv.get("VALIDATE_MODEL_KEY1");
+    private final String ENDPOINT2 = dotenv.get("VALIDATE_MODEL_ENDPOINT2");
+    private final String API_KEY2 = dotenv.get("VALIDATE_MODEL_KEY2");
+    private final String ENDPOINT3 = dotenv.get("VALIDATE_MODEL_ENDPOINT3");
+    private final String API_KEY3 = dotenv.get("VALIDATE_MODEL_KEY3");
+    private final String ENDPOINT4 = dotenv.get("VALIDATE_MODEL_ENDPOINT4");
+    private final String API_KEY4 = dotenv.get("VALIDATE_MODEL_KEY4");
 
     private final AtomicInteger requestCounter = new AtomicInteger(0);
 
@@ -76,12 +76,15 @@ public class Gpt4oMiniService {
 
         Map<String, Object> requestBody = Map.of(
                 "messages", List.of(
-                        Map.of("role", "system", "content", "I am LotusVerify, an assistant specialized in fact-checking. " +
-                                "My task is to verify the accuracy of the information you provide, returning a concise and clear response " +
-                                "of up to 50 words. I will not perform internet searches; I rely solely on prior knowledge for verification."),
+                        Map.of("role", "system", "content", """
+                                Soy LotusVerify, un asistente especializado en la verificación de datos.
+                                Mi tarea es verificar la exactitud de la información que proporcionas,
+                                devolviendo solo las palabras 'preciso' o 'cierto' en minúsculas, según corresponda.
+                                Si ninguna es aplicable, devolveré 'falso'. No realizaré búsquedas en internet;
+                                me baso únicamente en el conocimiento previo para la verificación."""),
                         Map.of("role", "user", "content", prompt)
                 ),
-                "max_tokens", 100,
+                "max_tokens", 500,
                 "temperature", 0.5
         );
 

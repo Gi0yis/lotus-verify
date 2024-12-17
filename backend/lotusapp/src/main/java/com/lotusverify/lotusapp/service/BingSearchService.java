@@ -32,7 +32,7 @@ public class BingSearchService {
         headers.set("Ocp-Apim-Subscription-Key", SUBSCRIPTION_KEY);
 
         var url = ENDPOINT + "?q=" + query;
-        var entity = new HttpEntity<String>(headers);
+        var entity = new HttpEntity<>(headers);
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
@@ -49,7 +49,7 @@ public class BingSearchService {
             int count = 0;
 
             for (JsonNode page : webPages) {
-                if (count >= 1) break;
+                if (count >= 2) break;
                 var name = page.path("name").asText();
                 var urlResult = page.path("url").asText();
                 var snippet = page.path("snippet").asText();
@@ -69,5 +69,14 @@ public class BingSearchService {
         } catch (Exception e) {
             return "Error al procesar la respuesta: " + e.getMessage();
         }
+    }
+
+    public int calculateRelevancy(String query, String searchResults) {
+        int score = 0;
+        String[] keywords = query.split(" ");
+        for (String keyword : keywords) {
+            score += searchResults.toLowerCase().contains(keyword.toLowerCase()) ? 10 : 0;
+        }
+        return score;
     }
 }
