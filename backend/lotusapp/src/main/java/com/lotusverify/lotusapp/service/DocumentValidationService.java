@@ -32,23 +32,35 @@ public class DocumentValidationService {
         List<String> phrases = extractPhrasesService.extractRelevantPhrases(documentText);
         report.setTotalPhrases(phrases.size());
 
-        var processedRequests = 0;
+        int processedRequests = 0;
+
         for (String phrase : phrases) {
             if (processedRequests >= REQUEST_LIMIT) {
                 waitForRateLimitReset();
                 processedRequests = 0;
             }
 
+            // Obtener resultados de búsqueda
             String searchResults = bingSearchService.search(phrase);
             metricsService.logSearch(!searchResults.contains("No se encontraron"), System.currentTimeMillis() - startTime);
 
-            String validationResponse = validatePhrase(phrase, searchResults);
-            var isPrecise = validationResponse.toLowerCase().contains("preciso") ||
-                    validationResponse.toLowerCase().contains("cierto");
+            // Validar cada página individualmente
+            String[] pages = searchResults.split("\n\n");
+            int relevancyScore = 0;
 
-            report.addPhraseResult(phrase, searchResults, validationResponse, isPrecise);
-            metricsService.logValidation(isPrecise);
+            for (String page : pages) {
+                String validationResponse = validatePhrase(phrase, page);
+                boolean isPrecise = validationResponse.toLowerCase().contains("preciso") ||
+                        validationResponse.toLowerCase().contains("cierto");
 
+                report.addPhraseResult(phrase, page, validationResponse, isPrecise);
+                metricsService.logValidation(isPrecise);
+
+                // Calcular relevancia solo para páginas validadas
+                relevancyScore += bingSearchService.calculateRelevancy(phrase, page);
+            }
+
+            metricsService.logRelevancyScore(relevancyScore);
             processedRequests++;
         }
 
@@ -66,9 +78,9 @@ public class DocumentValidationService {
         }
     }
 
-    private String validatePhrase(String phrase, String searchResults) {
-        var prompt = "Valida si esta información es precisa: " + phrase +
-                "\nBasado en: " + searchResults;
+    private String validatePhrase(String phrase, String searchResult) {
+        String prompt = "Valida si esta información es precisa: " + phrase +
+                "\nBasado en: " + searchResult;
         return validatePhrasesService.getChatCompletion(prompt);
     }
 }

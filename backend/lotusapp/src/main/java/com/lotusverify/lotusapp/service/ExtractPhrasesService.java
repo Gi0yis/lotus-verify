@@ -88,7 +88,7 @@ public class ExtractPhrasesService {
                             Frases relevantes: [La convergencia de tecnologías está dando lugar a una nueva era de innovación., Esta transformación digital está cambiando nuestras formas de vida, trabajo y comunicación.]
                             Frases contextualizadas: [La convergencia de la Inteligencia Artificial, el Aprendizaje Automático y el Internet de las Cosas está dando lugar a una nueva era de innovación., La Inteligencia Artificial, el Aprendizaje Automático y el Internet de las Cosas están transformando nuestras formas de vida, trabajo y comunicación.]
                             Texto a procesar: "{input_text}"
-                                
+                            
                             Solo devuelve el resultado de las Frases contextualizadas en el siguiente formato solo eso no envies mas cosas(SOLO QUIERO LA LISTA DE FRASES CONTEXTUALIZADAS):
                             Lista de frases reformuladas con contexto
                             
