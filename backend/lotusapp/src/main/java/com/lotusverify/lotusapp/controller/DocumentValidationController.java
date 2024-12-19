@@ -19,13 +19,25 @@ public class DocumentValidationController {
 
     @PostMapping("/validate")
     public ResponseEntity<ValidationResponse> validateDocument(@RequestBody DocumentRequest request) {
+        // Validar el documento y generar el reporte
         ValidationReport report = documentValidationService.validateDocument(request.getDocumentText());
 
+        // Crear objeto de métricas con los valores actualizados
         Metrics metrics = new Metrics(
+                metricsService.getTotalQueries(),
+                metricsService.getSearchSuccessRate(),
                 metricsService.getPrecisionRate(),
-                metricsService.getAverageResponseTime()
+                metricsService.getAverageResponseTime(),
+                metricsService.getAverageRelevancyScore(),
+                metricsService.getTruePositives(),
+                metricsService.getFalsePositives(),
+                metricsService.getTrueNegatives(),
+                metricsService.getFalseNegatives(),
+                metricsService.getFalsePositiveRate(),
+                metricsService.getFalseNegativeRate()
         );
 
+        // Crear respuesta con el reporte y las métricas
         ValidationResponse response = new ValidationResponse(report, metrics);
 
         return ResponseEntity.ok(response);
@@ -67,18 +79,27 @@ public class DocumentValidationController {
         private double precisionRate;
         private double averageResponseTime;
         private double averageRelevancyScore;
+        private long truePositives;
+        private long falsePositives;
+        private long trueNegatives;
+        private long falseNegatives;
+        private double falsePositiveRate;
+        private double falseNegativeRate;
 
-        public Metrics(long totalQueries, double searchSuccessRate, double precisionRate, double averageResponseTime, double averageRelevancyScore) {
+        public Metrics(long totalQueries, double searchSuccessRate, double precisionRate, double averageResponseTime,
+                       double averageRelevancyScore, long truePositives, long falsePositives, long trueNegatives,
+                       long falseNegatives, double falsePositiveRate, double falseNegativeRate) {
             this.totalQueries = totalQueries;
             this.searchSuccessRate = searchSuccessRate;
             this.precisionRate = precisionRate;
             this.averageResponseTime = averageResponseTime;
             this.averageRelevancyScore = averageRelevancyScore;
-        }
-
-        public Metrics(double precisionRate, double averageResponseTime) {
-            this.precisionRate = precisionRate;
-            this.averageResponseTime = averageResponseTime;
+            this.truePositives = truePositives;
+            this.falsePositives = falsePositives;
+            this.trueNegatives = trueNegatives;
+            this.falseNegatives = falseNegatives;
+            this.falsePositiveRate = falsePositiveRate;
+            this.falseNegativeRate = falseNegativeRate;
         }
 
         public long getTotalQueries() {
@@ -99,6 +120,30 @@ public class DocumentValidationController {
 
         public double getAverageRelevancyScore() {
             return averageRelevancyScore;
+        }
+
+        public long getTruePositives() {
+            return truePositives;
+        }
+
+        public long getFalsePositives() {
+            return falsePositives;
+        }
+
+        public long getTrueNegatives() {
+            return trueNegatives;
+        }
+
+        public long getFalseNegatives() {
+            return falseNegatives;
+        }
+
+        public double getFalsePositiveRate() {
+            return falsePositiveRate;
+        }
+
+        public double getFalseNegativeRate() {
+            return falseNegativeRate;
         }
     }
 }

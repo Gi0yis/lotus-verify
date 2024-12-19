@@ -1,6 +1,5 @@
 package com.lotusverify.lotusapp.service;
 
-
 import com.lotusverify.lotusapp.repository.ISearchResultRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,6 +17,13 @@ public class MetricsService {
     private long totalRelevancyScore = 0;
     private long relevancyCount = 0;
 
+    // Nuevos contadores para VP, FP, VN y FN
+    private long truePositives = 0;
+    private long falsePositives = 0;
+    private long trueNegatives = 0;
+    private long falseNegatives = 0;
+
+    // Métodos existentes
     public void logValidation(boolean isPrecise) {
         totalAssertionsValidated++;
         if (isPrecise) preciseAssertions++;
@@ -55,5 +61,44 @@ public class MetricsService {
 
     public double getAverageResponseTime() {
         return totalSearchTime > 0 ? (double) totalSearchTime / getTotalQueries() : 0;
+    }
+
+    public void logValidationResult(boolean isGeneratedAssertionCorrect, boolean isValidatedAsCorrect) {
+        if (isGeneratedAssertionCorrect && isValidatedAsCorrect) {
+            truePositives++;
+        } else if (!isGeneratedAssertionCorrect && isValidatedAsCorrect) {
+            falsePositives++;
+        } else if (!isGeneratedAssertionCorrect && !isValidatedAsCorrect) {
+            trueNegatives++;
+        } else if (isGeneratedAssertionCorrect && !isValidatedAsCorrect) {
+            falseNegatives++;
+        }
+    }
+
+    // Métodos para calcular las tasas
+    public double getFalsePositiveRate() {
+        long totalNegatives = falsePositives + trueNegatives;
+        return totalNegatives > 0 ? ((double) falsePositives / totalNegatives) * 100 : 0;
+    }
+
+    public double getFalseNegativeRate() {
+        long totalPositives = truePositives + falseNegatives;
+        return totalPositives > 0 ? ((double) falseNegatives / totalPositives) * 100 : 0;
+    }
+
+    public long getTruePositives() {
+        return truePositives;
+    }
+
+    public long getFalsePositives() {
+        return falsePositives;
+    }
+
+    public long getTrueNegatives() {
+        return trueNegatives;
+    }
+
+    public long getFalseNegatives() {
+        return falseNegatives;
     }
 }

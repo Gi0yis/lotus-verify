@@ -2,6 +2,7 @@ package com.lotusverify.lotusapp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lotusverify.lotusapp.model.GroundednessDetectionRequest;
+import io.github.cdimascio.dotenv.Dotenv;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
 
@@ -9,13 +10,13 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class GroundednessDetectionService {
-    private final String subscriptionKey;
-    private final String endpoint;
+    private final Dotenv dotenv = Dotenv.load();
+    private final String subscriptionKey = dotenv.get("CONTENT_SAFELY_KEY");;
+    private final String endpoint = dotenv.get("CONTENT_SAFELY_ENDPOINT");;
     private final OkHttpClient client;
 
+
     public GroundednessDetectionService() {
-        this.subscriptionKey = System.getenv("CONTENT_SAFELY_KEY");
-        this.endpoint = System.getenv("CONTENT_SAFELY_ENDPOINT");
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(100, TimeUnit.SECONDS)
                 .writeTimeout(10, TimeUnit.SECONDS)

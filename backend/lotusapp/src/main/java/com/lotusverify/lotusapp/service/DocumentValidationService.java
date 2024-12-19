@@ -29,6 +29,7 @@ public class DocumentValidationService {
         ValidationReport report = new ValidationReport();
         long startTime = System.currentTimeMillis();
 
+        // Extraer frases clave del documento
         List<String> phrases = extractPhrasesService.extractRelevantPhrases(documentText);
         report.setTotalPhrases(phrases.size());
 
@@ -40,11 +41,15 @@ public class DocumentValidationService {
                 processedRequests = 0;
             }
 
-            // Obtener resultados de búsqueda
+            // Buscar información en VimSearch
             String searchResults = bingSearchService.search(phrase);
-            metricsService.logSearch(!searchResults.contains("No se encontraron"), System.currentTimeMillis() - startTime);
+            boolean isSearchSuccessful = !searchResults.contains("No se encontraron");
+            metricsService.logSearch(isSearchSuccessful, System.currentTimeMillis() - startTime);
 
-            // Validar cada página individualmente
+            if (!isSearchSuccessful) {
+                continue;
+            }
+
             String[] pages = searchResults.split("\n\n");
             int relevancyScore = 0;
 
@@ -55,6 +60,11 @@ public class DocumentValidationService {
                 report.addPhraseResult(phrase, page, validationResponse, isPrecise);
                 metricsService.logValidation(isPrecise);
 
+                boolean isGeneratedAssertionCorrect = isPrecise;
+                boolean isValidatedAsCorrect = isPrecise;
+                metricsService.logValidationResult(isGeneratedAssertionCorrect, isValidatedAsCorrect);
+
+                // Calcular relevancia
                 relevancyScore += bingSearchService.calculateRelevancy(phrase, page);
             }
 

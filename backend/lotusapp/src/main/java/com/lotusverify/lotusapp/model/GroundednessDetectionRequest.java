@@ -4,41 +4,24 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GroundednessDetectionRequest {
-    private String task;
-    private String domain;
-    private String text;
-    private String[] groundingSources;
-    private boolean reasoning;
-    private QnA qna;
-    private LLMResource llmResource;
+    private TaskName taskName;
+    private String text; // Ejemplo de un campo adicional requerido
+    private DomainType domainType; // Ejemplo de otro campo requerido
 
-    public GroundednessDetectionRequest(TaskName taskName, DomainType domain, String text, String[] groundingSources,
-                                        boolean reasoning, String query, LLMResource llmResource) {
-        this.task = taskName.toString();
-        this.domain = domain.toString();
+    // Constructor
+    public GroundednessDetectionRequest(TaskName taskName, String text, DomainType domainType) {
+        this.taskName = taskName;
         this.text = text;
-        this.groundingSources = groundingSources;
-        this.reasoning = reasoning;
-        if (TaskName.QnA == taskName) {
-            this.qna = new QnA(query);
-        }
-        this.llmResource = llmResource;
+        this.domainType = domainType;
     }
 
-    public String getTask() {
-        return task;
+    // Getters y Setters
+    public TaskName getTaskName() {
+        return taskName;
     }
 
-    public void setTask(String task) {
-        this.task = task;
-    }
-
-    public String getDomain() {
-        return domain;
-    }
-
-    public void setDomain(String domain) {
-        this.domain = domain;
+    public void setTaskName(TaskName taskName) {
+        this.taskName = taskName;
     }
 
     public String getText() {
@@ -49,48 +32,20 @@ public class GroundednessDetectionRequest {
         this.text = text;
     }
 
-    public String[] getGroundingSources() {
-        return groundingSources;
+    public DomainType getDomainType() {
+        return domainType;
     }
 
-    public void setGroundingSources(String[] groundingSources) {
-        this.groundingSources = groundingSources;
-    }
-
-    public boolean isReasoning() {
-        return reasoning;
-    }
-
-    public void setReasoning(boolean reasoning) {
-        this.reasoning = reasoning;
-    }
-
-    public QnA getQna() {
-        return qna;
-    }
-
-    public void setQna(QnA qna) {
-        this.qna = qna;
-    }
-
-    public LLMResource getLlmResource() {
-        return llmResource;
-    }
-
-    public void setLlmResource(LLMResource llmResource) {
-        this.llmResource = llmResource;
+    public void setDomainType(DomainType domainType) {
+        this.domainType = domainType;
     }
 
     @Override
     public String toString() {
         return "GroundednessDetectionRequest{" +
-                "task='" + task + '\'' +
-                ", domain='" + domain + '\'' +
+                "taskName=" + taskName +
                 ", text='" + text + '\'' +
-                ", groundingSources=" + String.join(", ", groundingSources) +
-                ", reasoning=" + reasoning +
-                ", qna=" + qna +
-                ", llmResource=" + llmResource +
+                ", domainType=" + domainType +
                 '}';
     }
 }
