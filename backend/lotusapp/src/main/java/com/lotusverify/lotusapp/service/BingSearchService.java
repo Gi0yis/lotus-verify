@@ -3,7 +3,9 @@ package com.lotusverify.lotusapp.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lotusverify.lotusapp.model.SearchResult;
+import com.lotusverify.lotusapp.model.TrustedSource;
 import com.lotusverify.lotusapp.repository.ISearchResultRepository;
+import com.lotusverify.lotusapp.repository.ITrustedSourceRepository;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -15,9 +17,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class BingSearchService {
+
     private static final Dotenv dotenv = Dotenv.load();
     private static final String SUBSCRIPTION_KEY = dotenv.get("BING_API_KEY");
     private static final String ENDPOINT = dotenv.get("BING_API_URL");
@@ -25,9 +30,11 @@ public class BingSearchService {
     @Autowired
     private ISearchResultRepository searchResultRepository;
 
+    @Autowired
+    private ITrustedSourceRepository trustedSourceRepository;
+
     public String search(String query) {
         var restTemplate = new RestTemplate();
-
         var headers = new HttpHeaders();
         headers.set("Ocp-Apim-Subscription-Key", SUBSCRIPTION_KEY);
 
@@ -45,19 +52,37 @@ public class BingSearchService {
                 return "No se encontraron resultados para la consulta: " + query;
             }
 
+            List<JsonNode> trustedResults = new ArrayList<>();
+            List<JsonNode> normalResults = new ArrayList<>();
+
+            for (JsonNode page : webPages) {
+                String urlResult = page.path("url").asText();
+                List<TrustedSource> matchingSources = trustedSourceRepository.findMatchingSources(urlResult);
+
+                if (!matchingSources.isEmpty()) {
+                    trustedResults.add(page);
+                } else {
+                    normalResults.add(page);
+                }
+            }
+
             var result = new StringBuilder();
             int count = 0;
 
-            for (JsonNode page : webPages) {
+            // Priorizar resultados confiables
+            for (JsonNode page : trustedResults) {
                 if (count >= 2) break;
-                var name = page.path("name").asText();
-                var urlResult = page.path("url").asText();
-                var snippet = page.path("snippet").asText();
-
-                result.append("Titulo: ").append(name).append("\n")
-                        .append("URL: ").append(urlResult).append("\n")
-                        .append("Descripción: ").append(snippet).append("\n\n");
+                appendResult(page, result);
                 count++;
+            }
+
+            // Si faltan resultados, completar con resultados normales
+            if (count < 2) {
+                for (JsonNode page : normalResults) {
+                    if (count >= 2) break;
+                    appendResult(page, result);
+                    count++;
+                }
             }
 
             var searchResult = new SearchResult(query, result.toString(), LocalDateTime.now());
@@ -69,6 +94,16 @@ public class BingSearchService {
         } catch (Exception e) {
             return "Error al procesar la respuesta: " + e.getMessage();
         }
+    }
+
+    private void appendResult(JsonNode page, StringBuilder result) {
+        var name = page.path("name").asText();
+        var urlResult = page.path("url").asText();
+        var snippet = page.path("snippet").asText();
+
+        result.append("Titulo: ").append(name).append("\n")
+                .append("URL: ").append(urlResult).append("\n")
+                .append("Descripción: ").append(snippet).append("\n\n");
     }
 
     public int calculateRelevancy(String query, String searchResults) {

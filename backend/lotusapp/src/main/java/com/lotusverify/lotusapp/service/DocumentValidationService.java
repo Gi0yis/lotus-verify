@@ -50,13 +50,11 @@ public class DocumentValidationService {
 
             for (String page : pages) {
                 String validationResponse = validatePhrase(phrase, page);
-                boolean isPrecise = validationResponse.toLowerCase().contains("preciso") ||
-                        validationResponse.toLowerCase().contains("cierto");
+                boolean isPrecise = validationResponse.toLowerCase().contains("true");
 
                 report.addPhraseResult(phrase, page, validationResponse, isPrecise);
                 metricsService.logValidation(isPrecise);
 
-                // Calcular relevancia solo para páginas validadas
                 relevancyScore += bingSearchService.calculateRelevancy(phrase, page);
             }
 

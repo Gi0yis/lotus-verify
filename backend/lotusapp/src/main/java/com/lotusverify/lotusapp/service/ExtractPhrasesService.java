@@ -18,11 +18,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ExtractPhrasesService {
     private final Dotenv dotenv = Dotenv.load();
     private final String ENDPOINT1 = dotenv.get("EXTRACT_MODEL_ENDPOINT1");
-    private final String API_KEY1 = dotenv.get("EXTRACT_MODEL_KEY1");
-    private final String ENDPOINT3 = dotenv.get("EXTRACT_MODEL_ENDPOINT3");
-    private final String API_KEY3 = dotenv.get("EXTRACT_MODEL_KEY3");
+    private final String ENDPOINT3 = dotenv.get("EXTRACT_MODEL_ENDPOINT2");
+    private final String API_KEY = dotenv.get("EXTRACT_MODEL_KEY");
 
-    private final int MAX_TOKENS_PER_REQUEST = 1000;
     private final AtomicInteger modelCounter = new AtomicInteger(0);
 
     public List<String> extractRelevantPhrases(String text) {
@@ -30,6 +28,7 @@ public class ExtractPhrasesService {
             return Collections.singletonList("Error: El texto proporcionado está vacío.");
         }
 
+        final int MAX_TOKENS_PER_REQUEST = 1000;
         List<String> textChunks = splitTextIntoChunks(text, MAX_TOKENS_PER_REQUEST);
         List<String> relevantPhrases = new ArrayList<>();
 
@@ -44,9 +43,8 @@ public class ExtractPhrasesService {
     private List<String> invokeModel(String textChunk) {
         int modelIndex = modelCounter.getAndIncrement() % 2;
         String endpoint = modelIndex == 0 ? ENDPOINT1 : ENDPOINT3;
-        String apiKey = modelIndex == 0 ? API_KEY1 : API_KEY3;
 
-        return callModelApi(textChunk, endpoint, apiKey);
+        return callModelApi(textChunk, endpoint, API_KEY);
     }
 
     private List<String> callModelApi(String textChunk, String endpoint, String apiKey) {
@@ -92,7 +90,7 @@ public class ExtractPhrasesService {
                             Solo devuelve el resultado de las Frases contextualizadas en el siguiente formato solo eso no envies mas cosas(SOLO QUIERO LA LISTA DE FRASES CONTEXTUALIZADAS):
                             Lista de frases reformuladas con contexto
                             
-                            Las frases deben ser cortas ya que quiero hacer busquedas en internet con ellas.
+                            Las frases deben ser cortas ya que quiero hacer busquedas en internet con ellas, no puedes generar parrafos solo una oración.
                             Asegúrate de devolver únicamente las frases, sin listas, sin corchetes y sin ningún otro formato adicional. Separa cada frase con el delimitador ###."""), Map.of("role", "user", "content", prompt)
                 ),
                 "max_tokens", 200,

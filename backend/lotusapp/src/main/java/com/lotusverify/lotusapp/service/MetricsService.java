@@ -1,6 +1,6 @@
 package com.lotusverify.lotusapp.service;
 
-import com.lotusverify.lotusapp.model.SearchResult;
+
 import com.lotusverify.lotusapp.repository.ISearchResultRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

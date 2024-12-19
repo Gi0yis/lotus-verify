@@ -19,19 +19,13 @@ public class DocumentValidationController {
 
     @PostMapping("/validate")
     public ResponseEntity<ValidationResponse> validateDocument(@RequestBody DocumentRequest request) {
-        // Validar el documento
         ValidationReport report = documentValidationService.validateDocument(request.getDocumentText());
 
-        // Obtener métricas globales
         Metrics metrics = new Metrics(
-                metricsService.getTotalQueries(),
-                metricsService.getSearchSuccessRate(),
                 metricsService.getPrecisionRate(),
-                metricsService.getAverageResponseTime(),
-                metricsService.getAverageRelevancyScore()
+                metricsService.getAverageResponseTime()
         );
 
-        // Combinar el reporte de validación y las métricas
         ValidationResponse response = new ValidationResponse(report, metrics);
 
         return ResponseEntity.ok(response);
@@ -49,7 +43,7 @@ public class DocumentValidationController {
         }
     }
 
-    public class ValidationResponse {
+    public static class ValidationResponse {
         private ValidationReport validationReport;
         private Metrics metrics;
 
@@ -80,6 +74,11 @@ public class DocumentValidationController {
             this.precisionRate = precisionRate;
             this.averageResponseTime = averageResponseTime;
             this.averageRelevancyScore = averageRelevancyScore;
+        }
+
+        public Metrics(double precisionRate, double averageResponseTime) {
+            this.precisionRate = precisionRate;
+            this.averageResponseTime = averageResponseTime;
         }
 
         public long getTotalQueries() {
