@@ -90,7 +90,7 @@ public class ExtractPhrasesService {
                             Solo devuelve el resultado de las Frases contextualizadas en el siguiente formato solo eso no envies mas cosas(SOLO QUIERO LA LISTA DE FRASES CONTEXTUALIZADAS):
                             Lista de frases reformuladas con contexto
                             
-                            Las frases deben ser cortas ya que quiero hacer busquedas en internet con ellas, no puedes generar parrafos solo una oración.
+                            Divide los parrafos en frases que deben ser cortas ya que quiero hacer búsquedas en internet con ellas, no puedes generar parrafos completos solo afirmaciones de un tamaño razonable o pequeñas afirmaciones si el texto es corto.
                             Asegúrate de devolver únicamente las frases, sin listas, sin corchetes y sin ningún otro formato adicional. Separa cada frase con el delimitador ###."""), Map.of("role", "user", "content", prompt)
                 ),
                 "max_tokens", 200,

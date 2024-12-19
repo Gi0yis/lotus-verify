@@ -71,13 +71,13 @@ public class BingSearchService {
 
             // Priorizar resultados confiables
             for (JsonNode page : trustedResults) {
-                if (count >= 2) break;
+                if (count >= 1) break;
                 appendResult(page, result);
                 count++;
             }
 
             // Si faltan resultados, completar con resultados normales
-            if (count < 2) {
+            if (count < 1) {
                 for (JsonNode page : normalResults) {
                     if (count >= 2) break;
                     appendResult(page, result);
@@ -113,5 +113,21 @@ public class BingSearchService {
             score += searchResults.toLowerCase().contains(keyword.toLowerCase()) ? 10 : 0;
         }
         return score;
+    }
+
+    public static String extractUrl(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        String urlPattern = "(https?://[\\w.-]+(?:\\.[a-zA-Z]{2,3})+(?:/[^\\s]*)?)";
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(urlPattern);
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        return "";
     }
 }

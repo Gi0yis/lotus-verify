@@ -16,6 +16,9 @@ public class DiffbotService {
     @Value("${diffbot.api.token}")
     private String apiToken;
 
+    @Value("${diffbot.max.text.length:1000}")
+    private int maxTextLength;
+
     @Autowired
     private RestTemplate restTemplate;
 
@@ -32,10 +35,32 @@ public class DiffbotService {
             // Procesar la respuesta JSON para extraer el texto
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode rootNode = objectMapper.readTree(response.getBody());
-            JsonNode textNode = rootNode.path("objects").get(0).path("text");
-            return textNode.asText();
+
+            // Verificar la existencia del nodo "objects"
+            if (!rootNode.has("objects")) {
+                throw new RuntimeException("La respuesta no contiene el nodo 'objects'.");
+            }
+
+            JsonNode objectsNode = rootNode.path("objects");
+            if (!objectsNode.isArray() || objectsNode.isEmpty()) {
+                throw new RuntimeException("El nodo 'objects' está vacío o no es un arreglo.");
+            }
+
+            // Acceder al primer objeto del arreglo "objects"
+            JsonNode firstObjectNode = objectsNode.get(0);
+            if (firstObjectNode == null || !firstObjectNode.has("text")) {
+                throw new RuntimeException("El nodo 'text' no está presente en el primer objeto de 'objects'.");
+            }
+
+            String fullText = firstObjectNode.path("text").asText();
+
+            // Limitar el tamaño del texto
+            return fullText.length() > maxTextLength
+                    ? fullText.substring(0, maxTextLength)
+                    : fullText;
         } else {
             throw new RuntimeException("Error al extraer el texto: " + response.getStatusCode());
         }
     }
+
 }

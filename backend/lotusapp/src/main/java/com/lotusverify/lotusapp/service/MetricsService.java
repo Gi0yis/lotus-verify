@@ -17,13 +17,12 @@ public class MetricsService {
     private long totalRelevancyScore = 0;
     private long relevancyCount = 0;
 
-    // Nuevos contadores para VP, FP, VN y FN
+    // Nuevos contadores para métricas avanzadas
     private long truePositives = 0;
     private long falsePositives = 0;
     private long trueNegatives = 0;
     private long falseNegatives = 0;
 
-    // Métodos existentes
     public void logValidation(boolean isPrecise) {
         totalAssertionsValidated++;
         if (isPrecise) preciseAssertions++;
@@ -75,7 +74,6 @@ public class MetricsService {
         }
     }
 
-    // Métodos para calcular las tasas
     public double getFalsePositiveRate() {
         long totalNegatives = falsePositives + trueNegatives;
         return totalNegatives > 0 ? ((double) falsePositives / totalNegatives) * 100 : 0;
@@ -86,19 +84,31 @@ public class MetricsService {
         return totalPositives > 0 ? ((double) falseNegatives / totalPositives) * 100 : 0;
     }
 
-    public long getTruePositives() {
+    public double getAccuracyRate() {
+        long totalValidations = truePositives + trueNegatives + falsePositives + falseNegatives;
+        return totalValidations > 0 ? ((double) (truePositives + trueNegatives) / totalValidations) * 100 : 0;
+    }
+
+    public double getF1Score() {
+        double precision = truePositives > 0 ? (double) truePositives / (truePositives + falsePositives) : 0;
+        double recall = truePositives > 0 ? (double) truePositives / (truePositives + falseNegatives) : 0;
+        return (precision + recall) > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
+    }
+
+    public long getTruePositivesCount() {
         return truePositives;
     }
 
-    public long getFalsePositives() {
+    public long getFalsePositivesCount() {
         return falsePositives;
     }
 
-    public long getTrueNegatives() {
+    public long getTrueNegativesCount() {
         return trueNegatives;
     }
 
-    public long getFalseNegatives() {
+    public long getFalseNegativesCount() {
         return falseNegatives;
     }
+
 }

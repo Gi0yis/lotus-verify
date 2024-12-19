@@ -25,6 +25,12 @@ public class DocumentValidationService {
     @Autowired
     private MetricsService metricsService;
 
+    @Autowired
+    private DiffbotService diffbotService;
+
+    @Autowired
+    private TextAnalyticsService textAnalyticsService;
+
     public ValidationReport validateDocument(String documentText) {
         ValidationReport report = new ValidationReport();
         long startTime = System.currentTimeMillis();
@@ -34,14 +40,18 @@ public class DocumentValidationService {
         report.setTotalPhrases(phrases.size());
 
         int processedRequests = 0;
+        long nextResetTime = System.currentTimeMillis() + TIME_WINDOW * 1000;
 
         for (String phrase : phrases) {
             if (processedRequests >= REQUEST_LIMIT) {
-                waitForRateLimitReset();
+                long currentTime = System.currentTimeMillis();
+                if (currentTime < nextResetTime) {
+                    waitForRateLimitReset(nextResetTime - currentTime);
+                }
                 processedRequests = 0;
+                nextResetTime = System.currentTimeMillis() + TIME_WINDOW * 1000;
             }
 
-            // Buscar información en VimSearch
             String searchResults = bingSearchService.search(phrase);
             boolean isSearchSuccessful = !searchResults.contains("No se encontraron");
             metricsService.logSearch(isSearchSuccessful, System.currentTimeMillis() - startTime);
@@ -50,25 +60,26 @@ public class DocumentValidationService {
                 continue;
             }
 
-            String[] pages = searchResults.split("\n\n");
-            int relevancyScore = 0;
+            String[] resultsArray = searchResults.split("\n\n");
 
-            for (String page : pages) {
-                String validationResponse = validatePhrase(phrase, page);
+            for (String resultText : resultsArray) {
+                String pageUrl = BingSearchService.extractUrl(resultText);
+                if (pageUrl.isEmpty()) {
+                    continue;
+                }
+
+                String validationResponse = validatePhrase(phrase, resultText);
                 boolean isPrecise = validationResponse.toLowerCase().contains("true");
+                Boolean isDiffbotValid = validateWithDiffbotAndTextAnalyticsSafely(phrase, pageUrl);
+                boolean isGeneratedAssertionCorrect = isDiffbotValid != null ? isPrecise && isDiffbotValid : isPrecise;
 
-                report.addPhraseResult(phrase, page, validationResponse, isPrecise);
-                metricsService.logValidation(isPrecise);
+                boolean isHallucination = detectHallucinations(phrase, List.of(resultText));
+                metricsService.logValidation(isGeneratedAssertionCorrect);
+                metricsService.logValidationResult(isGeneratedAssertionCorrect, !isHallucination);
 
-                boolean isGeneratedAssertionCorrect = isPrecise;
-                boolean isValidatedAsCorrect = isPrecise;
-                metricsService.logValidationResult(isGeneratedAssertionCorrect, isValidatedAsCorrect);
-
-                // Calcular relevancia
-                relevancyScore += bingSearchService.calculateRelevancy(phrase, page);
+                report.addPhraseResult(phrase, resultText, validationResponse, isGeneratedAssertionCorrect);
             }
 
-            metricsService.logRelevancyScore(relevancyScore);
             processedRequests++;
         }
 
@@ -77,10 +88,19 @@ public class DocumentValidationService {
         return report;
     }
 
-    private void waitForRateLimitReset() {
+    private boolean detectHallucinations(String generatedPhrase, List<String> trustedSources) {
+        for (String source : trustedSources) {
+            double similarityScore = bingSearchService.calculateRelevancy(generatedPhrase, source);
+            if (similarityScore > 0.8) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void waitForRateLimitReset(long waitTimeMillis) {
         try {
-            System.out.println("Esperando para evitar límites de tasa...");
-            TimeUnit.SECONDS.sleep(TIME_WINDOW);
+            TimeUnit.MILLISECONDS.sleep(waitTimeMillis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -90,5 +110,35 @@ public class DocumentValidationService {
         String prompt = "Valida si esta información es precisa: " + phrase +
                 "\nBasado en: " + searchResult;
         return validatePhrasesService.getChatCompletion(prompt);
+    }
+
+    private Boolean validateWithDiffbotAndTextAnalyticsSafely(String phrase, String pageUrl) {
+        try {
+            return validateWithDiffbotAndTextAnalytics(phrase, pageUrl);
+        } catch (Exception e) {
+            System.err.println("Error al validar con Diffbot y TextAnalytics: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private Boolean validateWithDiffbotAndTextAnalytics(String phrase, String pageUrl) {
+        try {
+            String extractedText = diffbotService.extractTextFromUrl(pageUrl);
+            if (extractedText == null || extractedText.isEmpty()) {
+                return false;
+            }
+
+            List<String> pageKeyPhrases = textAnalyticsService.extractKeyPhrases(extractedText);
+            List<String> inputKeyPhrases = textAnalyticsService.extractKeyPhrases(phrase);
+
+            for (String keyPhrase : inputKeyPhrases) {
+                if (pageKeyPhrases.contains(keyPhrase)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error al validar con Diffbot y TextAnalytics: " + e.getMessage());
+        }
+        return false;
     }
 }
