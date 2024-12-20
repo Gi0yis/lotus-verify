@@ -54,8 +54,11 @@ public class MetricsService {
         if (relevancyCount == 0) return 0.0;
 
         double highRelevancyThreshold = 55.0;
-        long highRelevancyCount = (double) (long) totalRelevancyScore / relevancyCount >= highRelevancyThreshold ? 1 : 0;
-        return ((double) highRelevancyCount / relevancyCount) * 100;
+        long highRelevancyCount = 0;
+        if (totalRelevancyScore > 0) {
+            highRelevancyCount = (long) (relevancyCount - (totalRelevancyScore / highRelevancyThreshold));
+        }
+        return (double) highRelevancyCount / relevancyCount * 100;
     }
 
     public long getTotalQueries() {
@@ -98,6 +101,7 @@ public class MetricsService {
         var recall = truePositives > 0 ? (double) truePositives / (truePositives + falseNegatives) : 0;
         return (precision + recall) > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
     }
+
     public long getTruePositivesCount() {
         return truePositives;
     }

@@ -1,22 +1,26 @@
 package com.lotusverify.lotusapp.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.util.concurrent.RateLimiter;
 import com.lotusverify.lotusapp.model.ValidationReport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Service
 public class DocumentValidationService {
 
-    private static final int REQUEST_LIMIT = 6;
-    private static final long TIME_WINDOW = 60;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(REQUEST_LIMIT);
+    private final ExecutorService executorService = new ThreadPoolExecutor(
+            5,
+            5,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(50),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+    );
+
+    private final BlockingQueue<Runnable> diffbotQueue = new LinkedBlockingQueue<>(100);
 
     @Autowired
     private ExtractPhrasesService extractPhrasesService;
@@ -36,6 +40,21 @@ public class DocumentValidationService {
     @Autowired
     private TextAnalyticsService textAnalyticsService;
 
+    private final RateLimiter rateLimiter = RateLimiter.create(0.08);
+
+    public DocumentValidationService() {
+        Executors.newSingleThreadExecutor().submit(() -> {
+            while (true) {
+                try {
+                    diffbotQueue.take().run();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+    }
+
     public ValidationReport validateDocument(String documentText) {
         ValidationReport report = new ValidationReport();
         long startTime = System.currentTimeMillis();
@@ -48,16 +67,15 @@ public class DocumentValidationService {
                 .toArray(CompletableFuture[]::new);
 
         CompletableFuture.allOf(validationTasks).join();
-        long totalExecutionTime = System.currentTimeMillis() - startTime;
 
+        long totalExecutionTime = System.currentTimeMillis() - startTime;
         report.setExecutionTime(totalExecutionTime);
         report.setPrecisionRate(metricsService.getPrecisionRate());
         report.setSearchSuccessRate(metricsService.getSearchSuccessRate());
         report.setHighRelevancyPercentage(metricsService.getHighRelevancyPercentage());
         report.setF1Score(metricsService.getF1Score());
         report.setAccuracyRate(metricsService.getAccuracyRate());
-
-        executorService.shutdown();
+        report.setAverageRelevancyScore(metricsService.getAverageRelevancyScore());
 
         return report;
     }
@@ -65,6 +83,8 @@ public class DocumentValidationService {
     private void processPhrase(String phrase, ValidationReport report) {
         try {
             String searchResults = bingSearchService.search(phrase);
+            rateLimiter.acquire();
+
             boolean isSearchSuccessful = !searchResults.contains("No se encontraron");
             metricsService.logSearch(isSearchSuccessful, System.currentTimeMillis());
 
@@ -96,14 +116,18 @@ public class DocumentValidationService {
         return isPrecise && (isDiffbotValid == null || !isHallucination);
     }
 
-    private boolean detectHallucinations(String generatedPhrase, List<String> trustedSources) {
-        return trustedSources.stream()
-                .noneMatch(source -> bingSearchService.calculateNormalizedRelevancyScore(generatedPhrase, source) > 55.0);
-    }
-
     private Boolean validateWithDiffbotAndTextAnalyticsSafely(String phrase, String pageUrl) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        diffbotQueue.offer(() -> {
+            try {
+                Boolean result = retryWithExponentialBackoff(() -> validateWithDiffbotAndTextAnalytics(phrase, pageUrl));
+                future.complete(result);
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        });
         try {
-            return validateWithDiffbotAndTextAnalytics(phrase, pageUrl);
+            return future.get();
         } catch (Exception e) {
             System.err.println("Error al validar con Diffbot y TextAnalytics: " + e.getMessage());
             return null;
@@ -118,5 +142,33 @@ public class DocumentValidationService {
         List<String> inputKeyPhrases = textAnalyticsService.extractKeyPhrases(phrase);
 
         return inputKeyPhrases.stream().anyMatch(pageKeyPhrases::contains);
+    }
+
+    private Boolean retryWithExponentialBackoff(Callable<Boolean> task) {
+        int retries = 0;
+        long waitTime = 1000;
+
+        while (retries < 5) {
+            try {
+                return task.call();
+            } catch (Exception e) {
+                retries++;
+                System.err.println("Reintentando... Intento: " + retries);
+                try {
+                    Thread.sleep(waitTime);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+                waitTime *= 3;
+            }
+        }
+        System.err.println("Se excedieron los intentos máximos de reintento.");
+        return null;
+    }
+
+    private boolean detectHallucinations(String generatedPhrase, List<String> trustedSources) {
+        return trustedSources.stream()
+                .noneMatch(source -> bingSearchService.calculateNormalizedRelevancyScore(generatedPhrase, source) > 55.0);
     }
 }
