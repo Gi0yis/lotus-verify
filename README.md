@@ -25,13 +25,13 @@ Ya sea para proyectos académicos, investigaciones científicas o simples consul
 
 2. *🔍 Búsqueda Inteligente*  
    - *Bing Search API* localiza fuentes confiables basándose en las frases clave.  
-   - El contenido relevante se extrae con *Diffbot*, una IA experta en análisis web.  
+   - El contenido relevante se extrae con *Diffbot*.  
 
 3. *🤖 Validación con GPT-4o*  
    - Clasifica las frases como:  
-     - *Relacionadas:* Coinciden con la búsqueda.  
-     - *Incorrectas:* No tienen fundamento.  
-     - *Irrelevantes:* No guardan relación.  
+     - *Correcto:* Coinciden con la búsqueda.  
+     - *Preciso:*.  
+     - *Irrelevante:* No guardan relación.  
 
 4. *🔑 Procesamiento Detallado con Text Analytics*  
    - Desglosa los textos en palabras y frases clave.  
@@ -44,6 +44,7 @@ Ya sea para proyectos académicos, investigaciones científicas o simples consul
 ---
 
 ## 🛠 *Nuestra Infraestructura*
+![Descripción de la imagen](img/infraestructura.png)
 
 ### *1. Backend Potente*  
 - Desarrollado en *Java con Spring Boot* y desplegado en *Azure App Service*, garantiza alta disponibilidad y velocidad.  
