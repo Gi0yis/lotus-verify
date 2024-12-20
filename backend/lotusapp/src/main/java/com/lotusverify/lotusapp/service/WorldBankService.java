@@ -12,18 +12,17 @@ import java.util.Map;
 
 @Service
 public class WorldBankService {
-    private final Dotenv dotenv = Dotenv.load();
-    private final String BASE_URL = dotenv.get("WORLD_BANK_URL");
-
+    private final KeyVaultService keyVaultService;
     private final RestTemplate restTemplate;
 
-    public WorldBankService(RestTemplate restTemplate) {
+    public WorldBankService(RestTemplate restTemplate, KeyVaultService keyVaultService) {
         this.restTemplate = restTemplate;
+        this.keyVaultService = keyVaultService;
     }
 
     public List<GdpData> getParsedGdpData(String countryCode, String startDate, String endDate) {
         String url = String.format("%s/country/%s/indicator/NY.GDP.MKTP.CD?format=json&date=%s:%s&per_page=100",
-                BASE_URL,
+                keyVaultService.getSecret("WORLD-BANK-URL"),
                 countryCode,
                 startDate,
                 endDate);

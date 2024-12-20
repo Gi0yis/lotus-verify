@@ -3,10 +3,10 @@ package com.lotusverify.lotusapp.model;
 public class PhraseResult {
     private String phrase;
     private String searchResults;
-    private String validation;
+    private boolean validation;
     private boolean precise;
 
-    public PhraseResult(String phrase, String searchResults, String validation, boolean precise) {
+    public PhraseResult(String phrase, String searchResults, boolean validation, boolean precise) {
         this.phrase = phrase;
         this.searchResults = searchResults;
         this.validation = validation;
@@ -29,11 +29,11 @@ public class PhraseResult {
         this.searchResults = searchResults;
     }
 
-    public String getValidation() {
+    public boolean getValidation() {
         return validation;
     }
 
-    public void setValidation(String validation) {
+    public void setValidation(boolean validation) {
         this.validation = validation;
     }
 

@@ -16,16 +16,24 @@ public class MetricsService {
     private long totalSearchTime = 0;
     private long totalRelevancyScore = 0;
     private long relevancyCount = 0;
-
-    // Nuevos contadores para métricas avanzadas
     private long truePositives = 0;
     private long falsePositives = 0;
     private long trueNegatives = 0;
     private long falseNegatives = 0;
 
-    public void logValidation(boolean isPrecise) {
+    public void logValidation(boolean isGeneratedAssertionCorrect, boolean isValidatedAsCorrect) {
         totalAssertionsValidated++;
-        if (isPrecise) preciseAssertions++;
+        if (isGeneratedAssertionCorrect) preciseAssertions++;
+
+        if (isGeneratedAssertionCorrect && isValidatedAsCorrect) {
+            truePositives++;
+        } else if (!isGeneratedAssertionCorrect && !isValidatedAsCorrect) {
+            trueNegatives++;
+        } else if (!isGeneratedAssertionCorrect && isValidatedAsCorrect) {
+            falsePositives++;
+        } else {
+            falseNegatives++;
+        }
     }
 
     public void logSearch(boolean isSuccess, long responseTime) {
@@ -40,6 +48,14 @@ public class MetricsService {
 
     public double getAverageRelevancyScore() {
         return relevancyCount > 0 ? (double) totalRelevancyScore / relevancyCount : 0;
+    }
+
+    public double getHighRelevancyPercentage() {
+        if (relevancyCount == 0) return 0.0;
+
+        double highRelevancyThreshold = 55.0;
+        long highRelevancyCount = (double) (long) totalRelevancyScore / relevancyCount >= highRelevancyThreshold ? 1 : 0;
+        return ((double) highRelevancyCount / relevancyCount) * 100;
     }
 
     public long getTotalQueries() {
@@ -62,18 +78,6 @@ public class MetricsService {
         return totalSearchTime > 0 ? (double) totalSearchTime / getTotalQueries() : 0;
     }
 
-    public void logValidationResult(boolean isGeneratedAssertionCorrect, boolean isValidatedAsCorrect) {
-        if (isGeneratedAssertionCorrect && isValidatedAsCorrect) {
-            truePositives++;
-        } else if (!isGeneratedAssertionCorrect && isValidatedAsCorrect) {
-            falsePositives++;
-        } else if (!isGeneratedAssertionCorrect && !isValidatedAsCorrect) {
-            trueNegatives++;
-        } else if (isGeneratedAssertionCorrect && !isValidatedAsCorrect) {
-            falseNegatives++;
-        }
-    }
-
     public double getFalsePositiveRate() {
         long totalNegatives = falsePositives + trueNegatives;
         return totalNegatives > 0 ? ((double) falsePositives / totalNegatives) * 100 : 0;
@@ -90,11 +94,10 @@ public class MetricsService {
     }
 
     public double getF1Score() {
-        double precision = truePositives > 0 ? (double) truePositives / (truePositives + falsePositives) : 0;
-        double recall = truePositives > 0 ? (double) truePositives / (truePositives + falseNegatives) : 0;
+        var precision = truePositives > 0 ? (double) truePositives / (truePositives + falsePositives) : 0;
+        var recall = truePositives > 0 ? (double) truePositives / (truePositives + falseNegatives) : 0;
         return (precision + recall) > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
     }
-
     public long getTruePositivesCount() {
         return truePositives;
     }
@@ -110,5 +113,4 @@ public class MetricsService {
     public long getFalseNegativesCount() {
         return falseNegatives;
     }
-
 }

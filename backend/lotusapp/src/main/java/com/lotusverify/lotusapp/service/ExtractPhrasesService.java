@@ -2,7 +2,6 @@ package com.lotusverify.lotusapp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.cdimascio.dotenv.Dotenv;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,14 +15,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class ExtractPhrasesService {
-    private final Dotenv dotenv = Dotenv.load();
-    private final String ENDPOINT1 = dotenv.get("EXTRACT_MODEL_ENDPOINT1");
-    private final String ENDPOINT3 = dotenv.get("EXTRACT_MODEL_ENDPOINT2");
-    private final String API_KEY = dotenv.get("EXTRACT_MODEL_KEY");
+    private final KeyVaultService keyVaultService;
+
+    public ExtractPhrasesService(KeyVaultService keyVaultService) {
+        this.keyVaultService = keyVaultService;
+    }
 
     private final AtomicInteger modelCounter = new AtomicInteger(0);
 
     public List<String> extractRelevantPhrases(String text) {
+
         if (text == null || text.isEmpty()) {
             return Collections.singletonList("Error: El texto proporcionado está vacío.");
         }
@@ -41,6 +42,10 @@ public class ExtractPhrasesService {
     }
 
     private List<String> invokeModel(String textChunk) {
+        final String ENDPOINT1 = keyVaultService.getSecret("EXTRACT-MODEL-ENDPOINT1");
+        final String ENDPOINT3 = keyVaultService.getSecret("EXTRACT-MODEL-ENDPOINT2");
+        final String API_KEY = keyVaultService.getSecret("EXTRACT-MODEL-KEY");
+
         int modelIndex = modelCounter.getAndIncrement() % 2;
         String endpoint = modelIndex == 0 ? ENDPOINT1 : ENDPOINT3;
 
@@ -105,10 +110,10 @@ public class ExtractPhrasesService {
      */
     private List<String> splitTextIntoChunks(String text, int maxTokens) {
         List<String> chunks = new ArrayList<>();
-        int start = 0;
+        var start = 0;
 
         while (start < text.length()) {
-            int end = Math.min(start + maxTokens, text.length());
+            var end = Math.min(start + maxTokens, text.length());
             chunks.add(text.substring(start, end));
             start = end;
         }

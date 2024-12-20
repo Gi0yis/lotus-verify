@@ -19,13 +19,17 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class BingSearchService {
 
-    private static final Dotenv dotenv = Dotenv.load();
-    private static final String SUBSCRIPTION_KEY = dotenv.get("BING_API_KEY");
-    private static final String ENDPOINT = dotenv.get("BING_API_URL");
+    private final KeyVaultService keyVaultService;
+
+    public BingSearchService(KeyVaultService keyVaultService) {
+        this.keyVaultService = keyVaultService;
+    }
 
     @Autowired
     private ISearchResultRepository searchResultRepository;
@@ -36,9 +40,9 @@ public class BingSearchService {
     public String search(String query) {
         var restTemplate = new RestTemplate();
         var headers = new HttpHeaders();
-        headers.set("Ocp-Apim-Subscription-Key", SUBSCRIPTION_KEY);
+        headers.set("Ocp-Apim-Subscription-Key", keyVaultService.getSecret("BING-API-KEY"));
 
-        var url = ENDPOINT + "?q=" + query;
+        var url = keyVaultService.getSecret("BING-API-URL") + "?q=" + query;
         var entity = new HttpEntity<>(headers);
 
         try {
@@ -69,15 +73,13 @@ public class BingSearchService {
             var result = new StringBuilder();
             int count = 0;
 
-            // Priorizar resultados confiables
             for (JsonNode page : trustedResults) {
-                if (count >= 1) break;
+                if (count >= 2) break;
                 appendResult(page, result);
                 count++;
             }
 
-            // Si faltan resultados, completar con resultados normales
-            if (count < 1) {
+            if (count < 2) {
                 for (JsonNode page : normalResults) {
                     if (count >= 2) break;
                     appendResult(page, result);
@@ -115,14 +117,20 @@ public class BingSearchService {
         return score;
     }
 
+    public double calculateNormalizedRelevancyScore(String query, String searchResults) {
+        int relevancy = calculateRelevancy(query, searchResults);
+        int maxPossibleRelevancy = query.split(" ").length * 10;
+        return (double) relevancy / maxPossibleRelevancy * 100;
+    }
+
     public static String extractUrl(String text) {
         if (text == null || text.isEmpty()) {
             return "";
         }
 
         String urlPattern = "(https?://[\\w.-]+(?:\\.[a-zA-Z]{2,3})+(?:/[^\\s]*)?)";
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(urlPattern);
-        java.util.regex.Matcher matcher = pattern.matcher(text);
+        Pattern pattern = Pattern.compile(urlPattern);
+        Matcher matcher = pattern.matcher(text);
 
         if (matcher.find()) {
             return matcher.group(1);

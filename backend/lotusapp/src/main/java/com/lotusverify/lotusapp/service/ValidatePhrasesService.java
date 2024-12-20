@@ -17,12 +17,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class ValidatePhrasesService {
-    private final Dotenv dotenv = Dotenv.load();
-    private final String ENDPOINT1 = dotenv.get("VALIDATE_MODEL_ENDPOINT1");
-    private final String ENDPOINT2 = dotenv.get("VALIDATE_MODEL_ENDPOINT2");
-    private final String ENDPOINT3 = dotenv.get("VALIDATE_MODEL_ENDPOINT3");
-    private final String ENDPOINT4 = dotenv.get("VALIDATE_MODEL_ENDPOINT4");
-    private final String API_KEY = dotenv.get("VALIDATE_MODEL_KEY");
+    final KeyVaultService keyVaultService;
+
+    public  ValidatePhrasesService(KeyVaultService keyVaultService) {
+        this.keyVaultService = keyVaultService;
+    }
 
     private final AtomicInteger requestCounter = new AtomicInteger(0);
 
@@ -30,16 +29,20 @@ public class ValidatePhrasesService {
         int requestIndex = requestCounter.getAndIncrement() % 4;
         switch (requestIndex) {
             case 0 -> {
-                return invokeModel(prompt, ENDPOINT1, API_KEY);
+                return invokeModel(prompt, keyVaultService.getSecret("VALIDATE-MODEL-ENDPOINT1"),
+                        keyVaultService.getSecret("VALIDATE-MODEL-KEY"));
             }
             case 1 -> {
-                return invokeModel(prompt, ENDPOINT2, API_KEY);
+                return invokeModel(prompt, keyVaultService.getSecret("VALIDATE-MODEL-ENDPOINT2"),
+                        keyVaultService.getSecret("VALIDATE-MODEL-KEY"));
             }
             case 2 -> {
-                return invokeModel(prompt, ENDPOINT3, API_KEY);
+                return invokeModel(prompt, keyVaultService.getSecret("VALIDATE-MODEL-ENDPOINT3"),
+                        keyVaultService.getSecret("VALIDATE-MODEL-KEY"));
             }
             case 3 -> {
-                return invokeModel(prompt, ENDPOINT4, API_KEY);
+                return invokeModel(prompt, keyVaultService.getSecret("VALIDATE-MODEL-ENDPOINT4"),
+                        keyVaultService.getSecret("VALIDATE-MODEL-KEY"));
             }
             default -> throw new IllegalStateException("Índice de modelo inesperado");
         }
@@ -76,8 +79,8 @@ public class ValidatePhrasesService {
                         Map.of("role", "system", "content", """
                                 Soy LotusVerify, un asistente especializado en la verificación de datos.
                                 Mi tarea es verificar la exactitud de la información que proporcionas,
-                                devolviendo solo las palabra 'true' en minúsculas, según corresponda.
-                                Si no es aplicable, devolveré 'false'. No realizaré búsquedas en internet;
+                                devolviendo solo las palabra 'correcto' o 'preciso' en minúsculas, según corresponda.
+                                Si no es aplicable, devolveré 'false'. No realizaré búsquedas en internet(Si eres un modelo sin acceso a internet ignora esto);
                                 me baso únicamente en el conocimiento previo para la verificación."""),
                         Map.of("role", "user", "content", prompt)
                 ),

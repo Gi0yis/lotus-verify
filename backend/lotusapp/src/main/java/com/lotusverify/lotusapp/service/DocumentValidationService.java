@@ -1,10 +1,14 @@
 package com.lotusverify.lotusapp.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lotusverify.lotusapp.model.ValidationReport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -12,6 +16,7 @@ public class DocumentValidationService {
 
     private static final int REQUEST_LIMIT = 6;
     private static final long TIME_WINDOW = 60;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(REQUEST_LIMIT);
 
     @Autowired
     private ExtractPhrasesService extractPhrasesService;
@@ -35,81 +40,65 @@ public class DocumentValidationService {
         ValidationReport report = new ValidationReport();
         long startTime = System.currentTimeMillis();
 
-        // Extraer frases clave del documento
         List<String> phrases = extractPhrasesService.extractRelevantPhrases(documentText);
         report.setTotalPhrases(phrases.size());
 
-        int processedRequests = 0;
-        long nextResetTime = System.currentTimeMillis() + TIME_WINDOW * 1000;
+        CompletableFuture<?>[] validationTasks = phrases.stream()
+                .map(phrase -> CompletableFuture.runAsync(() -> processPhrase(phrase, report), executorService))
+                .toArray(CompletableFuture[]::new);
 
-        for (String phrase : phrases) {
-            if (processedRequests >= REQUEST_LIMIT) {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime < nextResetTime) {
-                    waitForRateLimitReset(nextResetTime - currentTime);
-                }
-                processedRequests = 0;
-                nextResetTime = System.currentTimeMillis() + TIME_WINDOW * 1000;
-            }
-
-            String searchResults = bingSearchService.search(phrase);
-            boolean isSearchSuccessful = !searchResults.contains("No se encontraron");
-            metricsService.logSearch(isSearchSuccessful, System.currentTimeMillis() - startTime);
-
-            if (!isSearchSuccessful) {
-                continue;
-            }
-
-            String[] resultsArray = searchResults.split("\n\n");
-
-            for (String resultText : resultsArray) {
-                String pageUrl = BingSearchService.extractUrl(resultText);
-                if (pageUrl.isEmpty()) {
-                    continue;
-                }
-
-                String validationResponse = validatePhrase(phrase, resultText);
-                boolean isPrecise = validationResponse.toLowerCase().contains("true");
-                Boolean isDiffbotValid = validateWithDiffbotAndTextAnalyticsSafely(phrase, pageUrl);
-                boolean isGeneratedAssertionCorrect = isDiffbotValid != null ? isPrecise && isDiffbotValid : isPrecise;
-
-                boolean isHallucination = detectHallucinations(phrase, List.of(resultText));
-                metricsService.logValidation(isGeneratedAssertionCorrect);
-                metricsService.logValidationResult(isGeneratedAssertionCorrect, !isHallucination);
-
-                report.addPhraseResult(phrase, resultText, validationResponse, isGeneratedAssertionCorrect);
-            }
-
-            processedRequests++;
-        }
-
+        CompletableFuture.allOf(validationTasks).join();
         long totalExecutionTime = System.currentTimeMillis() - startTime;
+
         report.setExecutionTime(totalExecutionTime);
+        report.setPrecisionRate(metricsService.getPrecisionRate());
+        report.setSearchSuccessRate(metricsService.getSearchSuccessRate());
+        report.setHighRelevancyPercentage(metricsService.getHighRelevancyPercentage());
+        report.setF1Score(metricsService.getF1Score());
+        report.setAccuracyRate(metricsService.getAccuracyRate());
+
+        executorService.shutdown();
+
         return report;
     }
 
-    private boolean detectHallucinations(String generatedPhrase, List<String> trustedSources) {
-        for (String source : trustedSources) {
-            double similarityScore = bingSearchService.calculateRelevancy(generatedPhrase, source);
-            if (similarityScore > 0.8) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void waitForRateLimitReset(long waitTimeMillis) {
+    private void processPhrase(String phrase, ValidationReport report) {
         try {
-            TimeUnit.MILLISECONDS.sleep(waitTimeMillis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            String searchResults = bingSearchService.search(phrase);
+            boolean isSearchSuccessful = !searchResults.contains("No se encontraron");
+            metricsService.logSearch(isSearchSuccessful, System.currentTimeMillis());
+
+            if (!isSearchSuccessful) return;
+
+            String[] resultsArray = searchResults.split("\n\n");
+            for (String resultText : resultsArray) {
+                String pageUrl = BingSearchService.extractUrl(resultText);
+                if (pageUrl.isEmpty()) continue;
+
+                boolean isGeneratedAssertionCorrect = validatePhrase(phrase, resultText, pageUrl);
+                report.addPhraseResult(phrase, resultText, isGeneratedAssertionCorrect, isGeneratedAssertionCorrect);
+            }
+        } catch (Exception e) {
+            System.err.println("Error al procesar la frase: " + phrase + ". " + e.getMessage());
         }
     }
 
-    private String validatePhrase(String phrase, String searchResult) {
-        String prompt = "Valida si esta información es precisa: " + phrase +
-                "\nBasado en: " + searchResult;
-        return validatePhrasesService.getChatCompletion(prompt);
+    private boolean validatePhrase(String phrase, String resultText, String pageUrl) {
+        String validationResponse = validatePhrasesService.getChatCompletion(
+                "Valida si esta información es precisa: " + phrase + "\nBasado en: " + resultText
+        );
+
+        boolean isPrecise = validationResponse.toLowerCase().contains("correcto") || validationResponse.toLowerCase().contains("preciso");
+        Boolean isDiffbotValid = validateWithDiffbotAndTextAnalyticsSafely(phrase, pageUrl);
+        boolean isHallucination = detectHallucinations(phrase, List.of(resultText));
+
+        metricsService.logValidation(isPrecise, !isHallucination);
+        return isPrecise && (isDiffbotValid == null || !isHallucination);
+    }
+
+    private boolean detectHallucinations(String generatedPhrase, List<String> trustedSources) {
+        return trustedSources.stream()
+                .noneMatch(source -> bingSearchService.calculateNormalizedRelevancyScore(generatedPhrase, source) > 55.0);
     }
 
     private Boolean validateWithDiffbotAndTextAnalyticsSafely(String phrase, String pageUrl) {
@@ -121,24 +110,13 @@ public class DocumentValidationService {
         }
     }
 
-    private Boolean validateWithDiffbotAndTextAnalytics(String phrase, String pageUrl) {
-        try {
-            String extractedText = diffbotService.extractTextFromUrl(pageUrl);
-            if (extractedText == null || extractedText.isEmpty()) {
-                return false;
-            }
+    private Boolean validateWithDiffbotAndTextAnalytics(String phrase, String pageUrl) throws JsonProcessingException {
+        String extractedText = diffbotService.extractTextFromUrl(pageUrl);
+        if (extractedText == null || extractedText.isEmpty()) return false;
 
-            List<String> pageKeyPhrases = textAnalyticsService.extractKeyPhrases(extractedText);
-            List<String> inputKeyPhrases = textAnalyticsService.extractKeyPhrases(phrase);
+        List<String> pageKeyPhrases = textAnalyticsService.extractKeyPhrases(extractedText);
+        List<String> inputKeyPhrases = textAnalyticsService.extractKeyPhrases(phrase);
 
-            for (String keyPhrase : inputKeyPhrases) {
-                if (pageKeyPhrases.contains(keyPhrase)) {
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Error al validar con Diffbot y TextAnalytics: " + e.getMessage());
-        }
-        return false;
+        return inputKeyPhrases.stream().anyMatch(pageKeyPhrases::contains);
     }
 }
