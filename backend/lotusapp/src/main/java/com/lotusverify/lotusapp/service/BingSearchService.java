@@ -73,15 +73,17 @@ public class BingSearchService {
             var result = new StringBuilder();
             int count = 0;
 
+            // Ajustar dependiendo los modeslos y cuota
             for (JsonNode page : trustedResults) {
-                if (count >= 2) break;
+                if (count >= 1) break;
                 appendResult(page, result);
                 count++;
             }
 
-            if (count < 2) {
+            // Ajustar dependiendo los modeslos y cuota
+            if (count < 1) {
                 for (JsonNode page : normalResults) {
-                    if (count >= 2) break;
+                    if (count >= 1) break;
                     appendResult(page, result);
                     count++;
                 }

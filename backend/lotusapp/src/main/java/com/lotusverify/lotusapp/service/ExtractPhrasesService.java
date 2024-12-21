@@ -42,6 +42,7 @@ public class ExtractPhrasesService {
     }
 
     private List<String> invokeModel(String textChunk) {
+        // Agregar o quitar modelos dependiendo de la cuota y límites
         final String ENDPOINT1 = keyVaultService.getSecret("EXTRACT-MODEL-ENDPOINT1");
         final String ENDPOINT3 = keyVaultService.getSecret("EXTRACT-MODEL-ENDPOINT2");
         final String API_KEY = keyVaultService.getSecret("EXTRACT-MODEL-KEY");

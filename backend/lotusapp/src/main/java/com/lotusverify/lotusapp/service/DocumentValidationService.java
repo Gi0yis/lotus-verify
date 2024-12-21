@@ -12,6 +12,7 @@ import java.util.concurrent.*;
 @Service
 public class DocumentValidationService {
 
+    // Ajustar dependiendo los modelos y cuota
     private final ExecutorService executorService = new ThreadPoolExecutor(
             5,
             5,
@@ -148,6 +149,7 @@ public class DocumentValidationService {
         int retries = 0;
         long waitTime = 1000;
 
+        // Ajustar dependiendo los modelos y cuota
         while (retries < 5) {
             try {
                 return task.call();
@@ -160,6 +162,8 @@ public class DocumentValidationService {
                     Thread.currentThread().interrupt();
                     return null;
                 }
+
+                // Ajustar dependiendo los modeslos y cuota
                 waitTime *= 3;
             }
         }

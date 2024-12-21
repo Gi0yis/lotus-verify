@@ -26,6 +26,7 @@ public class ValidatePhrasesService {
     private final AtomicInteger requestCounter = new AtomicInteger(0);
 
     public String getChatCompletion(String prompt) {
+        // Agregar o quitar modelos dependiendo de la cuota y límites
         int requestIndex = requestCounter.getAndIncrement() % 4;
         switch (requestIndex) {
             case 0 -> {
