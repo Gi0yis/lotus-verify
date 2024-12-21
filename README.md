@@ -45,12 +45,12 @@ Ya sea para proyectos académicos, investigaciones científicas o simples consul
 ---
 
 ## 🛠 *Nuestra Infraestructura*
-![Descripción de la imagen](img/infraestructura.png)
+![Descripción de la imagen](img/infraestructura1.png)
 
 ### *1. Backend Potente*  
 - Desarrollado en *Java con Spring Boot* y desplegado en *Azure App Service*, garantiza alta disponibilidad y velocidad.  
 
-### *2. Azure Database*  
+### *2. Azure Database*
 - Almacenamos búsquedas validadas con alta confiabilidad, construyendo una base de datos de fuentes confiables.  
 
 ### *3. Seguridad con Azure Key Vault*  
