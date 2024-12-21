@@ -28,10 +28,10 @@ document.getElementById("send").addEventListener("click", async () => {
   }
 
   document.getElementById("send").style.display = "none";
-  document.getElementById("output").textContent = "Enviando...";
+  document.getElementById("output").textContent = "Cargando...";
 
   try {
-    const response = await fetch("http://localhost:8080/api/validation/validate", {
+    const response = await fetch("http://40.123.33.50:8080/api/validation/validate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -56,8 +56,10 @@ function displayFormattedResponse(metrics) {
     <div style="font-size: 1.6em; margin: 0; padding: 0;">
       <br>Tasa de &eacutexito:<b> ${metrics.searchSuccessRate}%</b>
       <br>Precisi&oacuten:<b> ${metrics.precisionRate.toFixed(2)}%</b>
-      <br>Tiempo promedio de respuesta:<b> ${(metrics.averageResponseTime / 1e9).toFixed(2)} seg</b>
-      <br>Puntaje de relevancia promedio:<b> ${metrics.averageRelevancyScore}</b>
+      <br>Verdadero positivo:<b> ${metrics.truePositives}</b>
+      <br>Falso positivo:<b> ${metrics.falsePositives}</b>
+      <br>Verdadero negativo:<b> ${metrics.trueNegatives}</b>
+      <br>Falso negativo:<b> ${metrics.falseNegatives}</b>
     </div>
   `;
 }
