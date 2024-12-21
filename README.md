@@ -30,8 +30,8 @@ Ya sea para proyectos académicos, investigaciones científicas o simples consul
 
 3. *🤖 Validación con GPT-4o*  
    - Clasifica las frases como:  
-     - *Correcto:* Coinciden con la búsqueda.  
-     - *Preciso:*.  
+     - *Correcto:* Coincide con la frase.  
+     - *Preciso:* Si no conicide totalmente con la frase pero es relevante.  
      - *Irrelevante:* No guardan relación.  
 
 4. *🔑 Procesamiento Detallado con Text Analytics*  
@@ -61,12 +61,13 @@ Ya sea para proyectos académicos, investigaciones científicas o simples consul
 - *Azure Text Analytics:* Desglosa y compara palabras y frases clave.  
 - *Bing Search API:* Motor de búsqueda principal para localizar fuentes confiables.  
 - *Content Safety:* Filtra contenido inapropiado o malicioso.  
+- *GPT-4o*: Separa el texto en frases y afirmaciones del texo sin perder el contexto del mismo. Realiza una comparación de los resultados de buqueda y las frases.
 
 ---
 
 ## 💡 *¿Qué Hace Único a LotusVerify?*  
 
-- *🌐 Inteligencia Confiable:* No solo hacemos búsquedas, las validamos con tecnología de última generación.  
+- *🌐 Validaciones Confiables:* No solo hacemos búsquedas, las validamos con tecnología de última generación.  
 - *📖 Precisión Académica:* Ideal para temas científicos, tecnológicos, históricos y sociales.  
 - *🛡 Protegemos tus Búsquedas:* Datos sensibles y resultados validados permanecen seguros en nuestra infraestructura.  
 
