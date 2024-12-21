@@ -19,6 +19,7 @@ Ya sea para proyectos académicos, investigaciones científicas o simples consul
 ---
 
 ## 🧠 *¿Cómo Funciona?*
+![Descripción de la imagen](img/como-funciona.png)
 
 1. *📜 Análisis Inicial del Texto*  
    El contenido generado por la IA se divide en frases clave para mantener el contexto.  
