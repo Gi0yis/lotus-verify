@@ -1,4 +1,13 @@
 ![Image Description](img/lotus.jpeg)
+
+---
+
+Due to connection issues and technical difficulties, it was not possible to upload the video directly to Hackbox. Therefore, we have included the link to the video directly in the repository for access:
+
+[The video is available at this link](https://youtu.be/n4xvq8gw8cg?si=5CvkwVe-5XzHRIgU)
+
+---
+
 # 🌸 *LotusVerify*: Your Shield Against Misinformation 🌸
 
 In a world full of information, *how can you distinguish truth from fiction?*  
