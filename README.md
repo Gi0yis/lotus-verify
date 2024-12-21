@@ -77,7 +77,7 @@ Whether it's for academic projects, scientific research, or casual inquiries, *L
 IMPORTANT: Currently available for Edge and Chrome, compatible exclusively with GPT and Gemini models. Responses are limited to 40 words due to Azure subscription constraints.
 
 - Download the folder [chatgpt-plugin](https://github.com/Gi0yis/lotus-verify/tree/main/edge-extension/chatgpt-plugin).  
-- Go to [edge://extensions/](chrome://extensions/).
+- Go to: [edge://extensions/ or chrome://extensions/](edge://extensions/).
 - Enable "Developer Mode."  
 - Click "Load unpacked" and select the project folder.  
 
